@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -76,7 +77,7 @@ func postNotes(c *gin.Context) {
 	}
 
 	//Add the newNotes to the notes
-	
+
 	now := time.Now()
 	row := db.QueryRow("SELECT user_id FROM table_users WHERE username = $1", newNote.Username)
 	var userID int
@@ -85,7 +86,22 @@ func postNotes(c *gin.Context) {
 		c.IndentedJSON(http.StatusNotFound, "userID not found")
 		return
 	}
+	
+	row = db.QueryRow("SELECT note from table_notes WHERE user_id = $1 AND note_day::date = $2::date", userID, now)
+	var oldNote string
+	err = row.Scan(&oldNote)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		c.IndentedJSON(http.StatusInternalServerError, err)
+		return
+	}
 
+	if oldNote != "" {
+		// User has already a note for today, update existing entry in the database
+		_,_ = db.Exec("UPDATE table_notes SET note = $1 WHERE note_user_id = $2 AND note_day::date = $3::date", newNote.Text, userID, now)
+
+		c.IndentedJSON(http.StatusCreated, newNote)
+		return
+	}
 	_, err = db.Exec("insert into table_notes(user_id,note,note_day)values($1,$2,$3)", userID, newNote.Text, now)
 	if err != nil {
 		fmt.Println(err)
