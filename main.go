@@ -39,18 +39,24 @@ func getNote(c *gin.Context) {
 	//when there is a userArchive for the given username & there is a note with date of today
 	// Context.IndentedJSON serialize
 	//the todayNote into JSON and add it to the response
-	if userArchive, found := notes[username]; found == true {
-		note, hasNote := userArchive[date]
-		if hasNote == true {
-			c.IndentedJSON(http.StatusOK, note)
-			return
-		}
-		//when there were no notes for today for the user
-		c.IndentedJSON(http.StatusNotFound, "User has no Note for today")
+	row := db.QueryRow("SELECT user_id FROM table_users WHERE username = $1", username)
+	var userID int
+	err := row.Scan(&userID)
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, "userID not found")
 		return
 	}
-	//when the user do not exist
-	c.IndentedJSON(http.StatusNotFound, "Username "+username+" not found")
+
+	row = db.QueryRow("SELECT note from table_notes WHERE user_id = $1 AND note_day::date = $2::date", userID, date)
+	var note string
+	err = row.Scan(&note)
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, err)
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, note)
+	return
 }
 
 // handler for the endpoint to store slices of notes
@@ -70,12 +76,22 @@ func postNotes(c *gin.Context) {
 	}
 
 	//Add the newNotes to the notes
-
+	
 	now := time.Now()
-	today := formatDate(now)
-	notes[newNote.Username][today] = newNote.Text
-	db.QueryRow("SELECT user_id FROM table_users WHERE username = $1",newNote.Username)
-	db.Exec("insert into table_notes(user_id,note)values($1,$2)",1,newNote.Text)
+	row := db.QueryRow("SELECT user_id FROM table_users WHERE username = $1", newNote.Username)
+	var userID int
+	err := row.Scan(&userID)
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, "userID not found")
+		return
+	}
+
+	_, err = db.Exec("insert into table_notes(user_id,note,note_day)values($1,$2,$3)", userID, newNote.Text, now)
+	if err != nil {
+		fmt.Println(err)
+		c.IndentedJSON(http.StatusInternalServerError, "Could not store note")
+		return
+	}
 
 	c.IndentedJSON(http.StatusCreated, newNote)
 
@@ -94,8 +110,10 @@ func main() {
 	router.GET("/note/:username", getNote)
 	router.POST("/note/", postNotes)
 	router.GET("/note/:username/:date", getNote)
-
-	db, err := InitDB()
+	var (
+		err error
+	)
+	db, err = InitDB()
 
 	if err != nil {
 		panic(err)
