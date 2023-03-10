@@ -10,6 +10,8 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var db *sql.DB
+
 /*
 variable notes is a map of String keys which has
 values of another map of string keys to string values
@@ -72,6 +74,8 @@ func postNotes(c *gin.Context) {
 	now := time.Now()
 	today := formatDate(now)
 	notes[newNote.Username][today] = newNote.Text
+	db.QueryRow("SELECT user_id FROM table_users WHERE username = $1",newNote.Username)
+	db.Exec("insert into table_notes(user_id,note)values($1,$2)",1,newNote.Text)
 
 	c.IndentedJSON(http.StatusCreated, newNote)
 
@@ -91,13 +95,13 @@ func main() {
 	router.POST("/note/", postNotes)
 	router.GET("/note/:username/:date", getNote)
 
-	database, err := InitDB()
+	db, err := InitDB()
 
 	if err != nil {
 		panic(err)
 	}
 
-	defer database.Close()
+	defer db.Close()
 
 	router.Run("localhost:8080")
 }
@@ -105,16 +109,16 @@ func main() {
 func InitDB() (*sql.DB, error) {
 	psqlconn := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable", "postgres", "secure_pass_here", "dailynotes", "localhost", "5432")
 	var err error
-	db, err := sql.Open("postgres", psqlconn)
+	database, err := sql.Open("postgres", psqlconn)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = db.Ping(); err != nil {
+	if err = database.Ping(); err != nil {
 		return nil, err
 	}
 
-	return db, err
+	return database, err
 }
 
 //create an endpoint to check the history of the other days (Prio 1)
