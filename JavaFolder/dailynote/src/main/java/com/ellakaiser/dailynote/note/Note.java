@@ -3,39 +3,35 @@ package com.ellakaiser.dailynote.note;
 import java.time.LocalDate;
 
 public class Note {
-    private Long id;
-    private String note;
-    private LocalDate dot;
+    private String username;
+    private String notefromUser;
+    private final LocalDate dot = LocalDate.now();;
 
-    public Note(Long id, String note, LocalDate dot) {
-        this.id = id;
-        this.note = note;
-        this.dot = dot;
+    public Note(String username, String notefromUser) {
+        this.username=username;
+        this.notefromUser = notefromUser;
     }
 
     public Note() {}
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getNote() {
-        return note;
+        return notefromUser;
     }
 
-    public void setNote(String note) {
-        this.note = note;
+    public void setNote(String notefromUser) {
+        this.notefromUser = notefromUser;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public LocalDate getDot() {
         return dot;
     }
 
-    public void setDot(LocalDate dot) {
-        this.dot = dot;
-    }
 }
