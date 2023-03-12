@@ -9,7 +9,11 @@ import java.util.List;
 @RequestMapping("/api/v1/notes")
 public class NoteController {
 
-    private NoteService noteService= new NoteService();
+    private NoteService noteService;
+
+    public NoteController(NoteService noteService) {
+        this.noteService = noteService;
+    }
 
     @GetMapping
     public List<Note> findAllNotes(){
